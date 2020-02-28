@@ -3,6 +3,6 @@
     "start": "python app.py"
   },
   "models": {
-    "alwaysai/shufflenet_1x_g3": 1
+    "alwaysai/alexnet": 7
   }
 }

@@ -19,12 +19,12 @@ https://dashboard.alwaysai.co/docs/application_development/changing_the_model.ht
 To change the engine and accelerator, follow this guide:
 https://dashboard.alwaysai.co/docs/application_development/changing_the_engine_and_accelerator.html
 """
-ANIMALS_FOLDER = '/output_images/animals'
-NO_ANIMALS_FOLDER = '/output_images/no_animals'
+ANIMALS_FOLDER = 'output_images/animals/'
+NO_ANIMALS_FOLDER = 'output_images/no_animals/'
 
 
 def main():
-    classifier = edgeiq.Classification("alwaysai/googlenet")
+    classifier = edgeiq.Classification("alwaysai/alexnet")
     classifier.load(engine=edgeiq.Engine.DNN)
 
     print("Engine: {}".format(classifier.engine))
@@ -40,20 +40,20 @@ def main():
         image = image_display.copy()
 
         confidence_level = 0.3
-        predictions = classifier.classify_image(image, confidence_level)
-        results = edgeiq.filter_predictions_by_label(
-            predictions, filters.shufflenet())
+        results = classifier.classify_image(image, confidence_level)
 
         path, filename = os.path.split(image_path)
-        # path = path/to/file
-        # filename = foobar.txt
 
         # Default move file to no_animals folder
-        new_path = path + NO_ANIMALS_FOLDER + filename
+        new_path = path.replace('source_images', NO_ANIMALS_FOLDER)
 
-        if results.predictions:
-            # Move file to animals folder if any animal detected
-            new_path = path + ANIMALS_FOLDER + filename
+        for prediction in results.predictions:
+            print('animal detected: {}'.format(prediction.label))
+            print('filter list length: {}'.format(len(filters.shufflenet())))
+            for animal in filters.shufflenet():
+                if prediction.label == animal:
+                    new_path = path.replace('source_images', ANIMALS_FOLDER)
+                    print('moving file to: {}'.format(new_path))
 
         shutil.move(image_path, new_path)
 
