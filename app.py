@@ -5,9 +5,9 @@ import os
 import shutil
 
 """
-Use image classification to classify a batch of images. The
+Use image classification to sort a batch of images. The
 classification labels can be changed by selecting different models.
-Different images can be used by updating the files in the *images/*
+Different images can be used by updating the files in the *source_images/*
 directory. Note that when developing for a remote device, removing
 images in the local *images/* directory won't remove images from the
 device. They can be removed using the `aai app shell` command and
@@ -24,7 +24,7 @@ NO_ANIMALS_FOLDER = 'output_images/no_animals/'
 
 
 def main():
-    classifier = edgeiq.Classification("alwaysai/alexnet")
+    classifier = edgeiq.Classification("alwaysai/squeezenet_v1.1")
     classifier.load(engine=edgeiq.Engine.DNN)
 
     print("Engine: {}".format(classifier.engine))
@@ -33,31 +33,49 @@ def main():
     print("Labels:\n{}\n".format(classifier.labels))
 
     image_paths = sorted(list(edgeiq.list_images("source_images/")))
-    print("Images:\n{}\n".format(image_paths))
+    starting_image_count = len(image_paths)
+    print("Checking {} images".format(starting_image_count))
 
     for image_path in image_paths:
         image_display = cv2.imread(image_path)
         image = image_display.copy()
 
-        confidence_level = 0.3
+        # Set confidence threshold for animal detection
+        confidence_level = 0.2
         results = classifier.classify_image(image, confidence_level)
 
+        # Get filepath and name of current file from image_path
         path, filename = os.path.split(image_path)
 
-        # Default move file to no_animals folder
-        new_path = path.replace('source_images', NO_ANIMALS_FOLDER)
+        # Set the target labels interested in
+        filter = filters.lsvrc_animals()
 
-        for prediction in results.predictions:
-            print('animal detected: {}'.format(prediction.label))
-            print('filter list length: {}'.format(len(filters.shufflenet())))
-            for animal in filters.shufflenet():
-                if prediction.label == animal:
-                    new_path = path.replace('source_images', ANIMALS_FOLDER)
-                    print('moving file to: {}'.format(new_path))
+        # Determine which folder to sort file to dependent on labels detected
+        new_path = output_path(
+            path, filename, results.predictions, filter, confidence_level)
 
+        # Move file to appropriate output folder
         shutil.move(image_path, new_path)
 
-    print("End of Line")
+    animal_images_count = len(
+        list(edgeiq.list_images("output_images/animals")))
+
+    print("Sorting of {} images complete".format(starting_image_count))
+    print("{} images with animals detected".format(animal_images_count))
+
+
+def output_path(original_image_path, filename, predictions, filter, confidence):
+    no_animal_path = original_image_path.replace(
+        'source_images', NO_ANIMALS_FOLDER)
+    animal_path = original_image_path.replace(
+        'source_images', ANIMALS_FOLDER)
+    for prediction in predictions:
+        for animal in filter:
+            if prediction.label == animal:
+                print('app.py: output_path: animal detected: {} with {} confidence in file {}. Returning path: {}'.format(
+                    prediction.label, prediction.confidence, filename, animal_path))
+                return animal_path
+    return no_animal_path
 
 
 if __name__ == "__main__":
