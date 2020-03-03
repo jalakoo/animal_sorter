@@ -26,7 +26,7 @@ NO_ANIMALS_FOLDER = 'output_images/no_animals/'
 TARGETS = filters.lsvrc_animals()
 CLASSIFIERS = [('alwaysai/squeezenet_v1.1', TARGETS, 0.2),
                ('alwaysai/shufflenet_1x_g3', TARGETS, 9.0),
-               ('alwaysai/inception_resnet', TARGETS, 0.2)]
+               ('alwaysai/alexnet', TARGETS, 0.1)]
 CLASSIFIERS_NEEDED_TO_AGREE = .5
 
 
@@ -99,8 +99,8 @@ def targets_detected_among(classifiers_tuple_array, image_path, image, required_
             classifier, filename, image, targets, confidence_level)
         result.append(were_targets_detected)
     percent_in_agreement = sum(result) / len(result)
-    print('app.py: targets_detected_among: {} of all models are in agreement that a target object was detected in file {}'.format(
-        percent_in_agreement, filename))
+    print('app.py: targets_detected_among: {:.1f}% of all models are in agreement that a target object was detected in file {}'.format(
+        percent_in_agreement*100, filename))
     if percent_in_agreement >= required_percent_of_models_in_agreement:
         return True
     return False
