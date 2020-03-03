@@ -4,6 +4,7 @@
   },
   "models": {
     "alwaysai/shufflenet_1x_g3": 1,
-    "alwaysai/squeezenet_v1.1": 1
+    "alwaysai/squeezenet_v1.1": 1,
+    "alwaysai/inception_resnet": 1
   }
 }

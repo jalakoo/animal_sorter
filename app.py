@@ -19,18 +19,25 @@ https://dashboard.alwaysai.co/docs/application_development/changing_the_model.ht
 To change the engine and accelerator, follow this guide:
 https://dashboard.alwaysai.co/docs/application_development/changing_the_engine_and_accelerator.html
 """
+
+USE_MOVIDIUS_ACCELERATOR = False
 ANIMALS_FOLDER = 'output_images/animals/'
 NO_ANIMALS_FOLDER = 'output_images/no_animals/'
+TARGETS = filters.lsvrc_animals()
+CLASSIFIERS = [('alwaysai/squeezenet_v1.1', TARGETS, 0.2),
+               ('alwaysai/shufflenet_1x_g3', TARGETS, 9.0),
+               ('alwaysai/inception_resnet', TARGETS, 0.2)]
+CLASSIFIERS_NEEDED_TO_AGREE = .5
 
 
 def main():
-    classifier = edgeiq.Classification("alwaysai/squeezenet_v1.1")
-    classifier.load(engine=edgeiq.Engine.DNN)
+    # Using an accelerator?
+    engine = edgeiq.Engine.DNN
+    if USE_MOVIDIUS_ACCELERATOR == True:
+        engine = edgeiq.Engine.DNN_OPENVINO
 
-    print("Engine: {}".format(classifier.engine))
-    print("Accelerator: {}\n".format(classifier.accelerator))
-    print("Model:\n{}\n".format(classifier.model_id))
-    print("Labels:\n{}\n".format(classifier.labels))
+    # Spin up all the classifiers you want to use
+    classifiers = classifiers_from(CLASSIFIERS, engine)
 
     image_paths = sorted(list(edgeiq.list_images("source_images/")))
     starting_image_count = len(image_paths)
@@ -40,19 +47,16 @@ def main():
         image_display = cv2.imread(image_path)
         image = image_display.copy()
 
-        # Set confidence threshold for animal detection
-        confidence_level = 0.2
-        results = classifier.classify_image(image, confidence_level)
-
-        # Get filepath and name of current file from image_path
-        path, filename = os.path.split(image_path)
-
-        # Set the target labels interested in
-        filter = filters.lsvrc_animals()
+        # Run through all classifiers looking for target labels
+        animal_found = False
+        if targets_detected_among(classifiers, image_path, image, CLASSIFIERS_NEEDED_TO_AGREE) == True:
+            animal_found = True
 
         # Determine which folder to sort file to dependent on labels detected
-        new_path = output_path(
-            path, filename, results.predictions, filter, confidence_level)
+        new_path = image_path.replace(
+            'source_images', NO_ANIMALS_FOLDER)
+        if animal_found == True:
+            new_path = image_path.replace('source_images', ANIMALS_FOLDER)
 
         # Move file to appropriate output folder
         shutil.move(image_path, new_path)
@@ -61,21 +65,62 @@ def main():
         list(edgeiq.list_images("output_images/animals")))
 
     print("Sorting of {} images complete".format(starting_image_count))
-    print("{} images with animals detected".format(animal_images_count))
+    print("{} images with animals detected in output folder".format(
+        animal_images_count))
 
 
-def output_path(original_image_path, filename, predictions, filter, confidence):
-    no_animal_path = original_image_path.replace(
-        'source_images', NO_ANIMALS_FOLDER)
-    animal_path = original_image_path.replace(
-        'source_images', ANIMALS_FOLDER)
-    for prediction in predictions:
-        for animal in filter:
-            if prediction.label == animal:
-                print('app.py: output_path: animal detected: {} with {} confidence in file {}. Returning path: {}'.format(
-                    prediction.label, prediction.confidence, filename, animal_path))
-                return animal_path
-    return no_animal_path
+def classifiers_from(an_array_of_tuples, engine=edgeiq.Engine.DNN):
+    '''
+    Taking the configuration array and initializing all the classifiers. Returns an
+    array of tuples (classifer, array_of_target_labels, confidence_level_threshold_for_detections)
+    '''
+    result = []
+    for model_id, targets, confidence_level in an_array_of_tuples:
+        print('app.py: classifier_from: initializing classifier with model id: {}'.format(
+            model_id))
+        classifier = edgeiq.Classification(model_id)
+        classifier.load(engine=engine)
+        result.append((classifier, targets, confidence_level))
+    return result
+
+
+def targets_detected_among(classifiers_tuple_array, image_path, image, required_percent_of_models_in_agreement=0.5):
+    '''
+    Takes an array of tuples (classifier, confidence_level) and checks to see if the minimum
+    percent of all available classifiers agree that the target array of labels is present.
+    ie if percentage_of_models_in_agreement = 0.5 then at least half of the available models
+    must return True for this function to return True. 1.0 would mean all available models
+    would have to return True.
+    '''
+    _, filename = os.path.split(image_path)
+    result = []
+    for classifier, targets, confidence_level in classifiers_tuple_array:
+        were_targets_detected = targets_detected(
+            classifier, filename, image, targets, confidence_level)
+        result.append(were_targets_detected)
+    percent_in_agreement = sum(result) / len(result)
+    print('app.py: targets_detected_among: {} of all models are in agreement that a target object was detected in file {}'.format(
+        percent_in_agreement, filename))
+    if percent_in_agreement >= required_percent_of_models_in_agreement:
+        return True
+    return False
+
+
+def targets_detected(classifier, filename, image, targets_array, target_confidence_level=0.6):
+    '''
+    Returns True if any prediction in the predictions list matches a label from the
+    targets_array (an array of strings). Note that different classifiers may use
+    different confidence level base numbers. Most will map 1.0 = 100%, but not all!
+    '''
+    # _, filename = os.path.split(image_path)
+    results = classifier.classify_image(image, target_confidence_level)
+    for prediction in results.predictions:
+        for target in targets_array:
+            if prediction.label == target:
+                print('app.py: targets_detected: {} with {} confidence from the {} model in {}'.format(
+                    prediction.label, prediction.confidence, classifier.model_id, filename))
+                return True
+    return False
 
 
 if __name__ == "__main__":
