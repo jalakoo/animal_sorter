@@ -1,4 +1,4 @@
-# Classifier Based Image Sorter
+# Classifier based Image Sorter
 This app can use any number of image classifiers to detect any number of target labels, then sort those images into 1 of 2 folders if the target label is detected.
 
 To edit, add, or remove models, be sure to use the appropriate [alwaysAI CLI commands](https://dashboard.alwaysai.co/docs/application_development/changing_the_model.html) to do so, in addition to adding a classifier record into the `alwaysai.app.json` file (see the Configuration section below).
@@ -18,6 +18,7 @@ empty_output_folder | string | Location from the app root folder to put images w
 classifiers | array | An array of dictionaries with classifier information
 
 Classifier Information:
+
 Key | Value Type | Description
 -----| ---------- | ----------
 model_id | string | The model id as found from [alwaysAI's Model Catalog](https://dashboard.alwaysai.co/model-catalog/models?category=Classification). Note that there should be a duplicate of this string value in the higher level 'models' key-value pair which is used by alwaysAI's CLI tool. To add or remove models for download, see [the docs here](https://dashboard.alwaysai.co/docs/application_development/changing_the_model.html)
@@ -32,5 +33,7 @@ Run: `aai app start`
 
 ## Support
 Docs: https://dashboard.alwaysai.co/docs/getting_started/introduction.html
+
 Discord: https://discord.gg/R2uM36U
+
 Email: contact@alwaysai.co
