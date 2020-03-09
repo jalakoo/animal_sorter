@@ -16,7 +16,7 @@ scripts | dictionary | Required by alwaysAI's CLI to specify which file to run w
 models | dictionary | Required by alwaysAI's CLI to determine which CV models to download and make available to the app's docker container
 found_folder | string | Location from the app root folder to put images with target objects into. Default is `output_images/found`
 empty_folder | string | Location from the app root folder to put images where no target objects were detected. Default is `output_images/not_found`
-classifiers | array | An array of dictionaries with classifier information. See below for expected keys for each dictionary object
+classifier | object | A dictionary with classifier information. See below for expected key-values
 
 Classifier Information:
 
